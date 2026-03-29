@@ -1,0 +1,17 @@
+{
+  "name": "BlacRate Pro",
+  "short_name": "BlacRate",
+  "start_url": "index.php",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#bc6ff1",
+  "description": "Professional Crypto Rate & Profit Calculator",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/10307/10307842.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

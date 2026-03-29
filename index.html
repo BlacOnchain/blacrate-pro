@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BlacRate Pro</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#bc6ff1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+    <div class="app-wrap">
+        <header>
+            <div class="logo">Blac<span>Rate</span></div>
+            <div class="live-pill" id="refreshBtn">REFRESH 🔄</div>
+        </header>
+
+        <div class="engine-toggle">
+            <button id="p2pTab" class="t-btn active">Black Market</button>
+            <button id="offTab" class="t-btn">Official Rate</button>
+        </div>
+
+        <main>
+            <div class="glass-box">
+                <label>Crypto Amount</label>
+                <div class="flex-row">
+                    <input type="number" id="coinQty" placeholder="0.00" inputmode="decimal">
+                    <div class="select-custom">
+                        <select id="coinType">
+                            <option value="1">USDT</option>
+                            <option value="65000">BTC</option> <option value="3500">ETH</option>
+                            <option value="150">SOL</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-box margin-box">
+                <label>Your Profit (Per $1)</label>
+                <div class="flex-row">
+                    <span class="currency-label">₦</span>
+                    <input type="number" id="marginInput" value="0" inputmode="decimal">
+                </div>
+            </div>
+
+            <div class="glass-box highlight" id="rateCard">
+                <label id="rateTypeLabel">P2P Rate (Editable)</label>
+                <input type="number" id="manualRate" value="1600" inputmode="decimal">
+                <div class="info-tag" id="officialRateInfo">Official: Loading...</div>
+            </div>
+
+            <div class="breakdown-card">
+                <div class="b-row">
+                    <span class="b-label">Market Value</span>
+                    <span id="marketValDisplay" class="b-value">₦0.00</span>
+                </div>
+                <div class="b-row profit-line">
+                    <span class="b-label">Your Commission</span>
+                    <span id="profitValDisplay" class="b-value">+₦0.00</span>
+                </div>
+                
+                <div class="final-quote-box">
+                    <div class="q-header">FINAL QUOTE</div>
+                    <div class="q-main">
+                        <span class="q-symbol">₦</span>
+                        <span id="nairaFinal">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-btn" id="copyBtn">Copy & Save Trade</button>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <span>RECENT TRADES</span>
+                    <button id="clearHistBtn" class="clear-btn">Clear</button>
+                </div>
+                <div id="historyList"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log("BlacRate: Offline Mode Active"));
+            });
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>

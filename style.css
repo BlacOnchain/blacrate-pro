@@ -1,0 +1,45 @@
+:root { --bg: #050505; --accent: #bc6ff1; --glass: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --green: #00ff88; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; outline: none; }
+
+body { background: var(--bg); color: white; display: flex; justify-content: center; min-height: 100vh; overflow-y: auto; padding-bottom: 40px; }
+.app-wrap { width: 100%; max-width: 410px; padding: 20px; }
+
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.logo { font-weight: 900; font-size: 1.4rem; letter-spacing: -1px; }
+.logo span { color: var(--accent); }
+.live-pill { font-size: 0.6rem; color: var(--green); border: 1px solid var(--green); padding: 4px 10px; border-radius: 50px; cursor: pointer; font-weight: bold; }
+
+.engine-toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--glass); border-radius: 14px; padding: 4px; margin-bottom: 15px; border: 1px solid var(--border); }
+.t-btn { background: transparent; border: none; color: white; padding: 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; cursor: pointer; transition: 0.2s; }
+.t-btn.active { background: var(--accent); color: black; }
+
+.glass-box { background: var(--glass); border: 1px solid var(--border); padding: 15px; border-radius: 18px; margin-bottom: 10px; }
+.highlight { border-color: var(--accent); background: rgba(188, 111, 241, 0.05); }
+.margin-box { border-left: 3px solid var(--green); }
+
+label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.4; display: block; margin-bottom: 6px; letter-spacing: 1px; }
+.flex-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+input { background: transparent; border: none; color: white; font-size: 1.6rem; font-weight: 700; width: 100%; }
+input:disabled { opacity: 0.3; }
+
+/* Dark Styled Dropdown */
+.select-custom { background: #151515; border: 1px solid var(--border); border-radius: 10px; padding: 4px 8px; }
+select { background: transparent; color: var(--accent); border: none; font-weight: 900; font-size: 0.9rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
+
+/* Breakdown Styling */
+.breakdown-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 22px; padding: 20px; margin: 20px 0; }
+.b-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.b-label { font-size: 0.7rem; opacity: 0.5; text-transform: uppercase; }
+.b-value { font-weight: 600; font-size: 0.85rem; }
+.profit-line { color: var(--green); }
+
+.final-quote-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+.q-header { font-size: 0.6rem; letter-spacing: 2px; opacity: 0.4; margin-bottom: 4px; }
+.q-main { color: var(--accent); font-weight: 900; font-size: 2.2rem; letter-spacing: -1px; display: flex; align-items: baseline; }
+.q-symbol { font-size: 1.2rem; margin-right: 4px; }
+
+.cta-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 20px; border-radius: 18px; font-weight: 900; font-size: 1rem; cursor: pointer; margin-bottom: 30px; }
+
+/* History */
+.h-item { background: var(--glass); padding: 12px; border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+.clear-btn { background: transparent; border: none; color: #ff4444; font-size: 0.6rem; cursor: pointer; }
