@@ -50,7 +50,7 @@
 
 body {
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
     padding: 28px 0 64px;
     color: var(--text-main);
     background: var(--bg-deep);
@@ -259,11 +259,12 @@ select option { color: #11151b; background: #eef1f7; }
 }
 
 @media (min-width: 800px) {
-    body { align-items: flex-start; padding: 48px 32px 72px; }
+    body { align-items: flex-start; padding: 48px clamp(16px, 4vw, 48px) 72px; }
 
     .app-wrap {
-        width: min(100%, 1120px);
-        padding: 0 12px;
+        width: 100%;
+        max-width: 1160px;
+        padding: 0;
     }
 
     header { margin-bottom: 28px; padding: 0 8px; }
@@ -277,7 +278,8 @@ select option { color: #11151b; background: #eef1f7; }
 
     main {
         display: grid;
-        grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+        width: 100%;
+        grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
         align-items: start;
         gap: 16px 22px;
     }
@@ -302,8 +304,15 @@ select option { color: #11151b; background: #eef1f7; }
 }
 
 @media (min-width: 1120px) {
-    .app-wrap { padding: 0 24px; }
-    main { grid-template-columns: minmax(560px, 1.12fr) minmax(400px, 0.88fr); gap: 18px 28px; }
+    main { grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); gap: 18px 28px; }
+}
+
+@media (min-width: 800px) and (max-width: 959px) {
+    main { display: block; }
+    main > * { margin-right: 0; margin-left: 0; }
+    main > .history-section, main > .analytics-card, main > .alert-card { margin-top: 22px; }
+    main > .cta-btn { margin-bottom: 16px; }
+    main > .receipt-btn { margin-top: 0; margin-bottom: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
