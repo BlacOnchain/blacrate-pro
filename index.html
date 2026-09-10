@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BlacRate Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#b042ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+    <div class="app-wrap">
+        <header>
+            <div class="logo">Blac<span>Rate</span></div>
+            <button class="live-pill" id="refreshBtn" type="button">REFRESH</button>
+        </header>
+
+        <div class="engine-toggle">
+            <button id="p2pTab" class="t-btn active" type="button">Black Market</button>
+            <button id="offTab" class="t-btn" type="button">Official Rate</button>
+        </div>
+
+        <main>
+            <div class="glass-box">
+                <label for="coinQty">Crypto Amount</label>
+                <div class="flex-row">
+                    <input type="number" id="coinQty" placeholder="0.00" inputmode="decimal">
+                    <div class="select-custom">
+                        <select id="coinType">
+                            <option value="1" data-coin="tether">USDT</option>
+                            <option value="65000" data-coin="bitcoin">BTC</option>
+                            <option value="3500" data-coin="ethereum">ETH</option>
+                            <option value="150" data-coin="solana">SOL</option>
+                            <option value="1" data-coin="usd-coin">USDC</option>
+                            <option value="600" data-coin="binancecoin">BNB</option>
+                            <option value="5" data-coin="the-open-network">TON</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-box margin-box">
+                <label for="marginInput">Your Profit (Per $1)</label>
+                <div class="flex-row">
+                    <span class="currency-label">N</span>
+                    <input type="number" id="marginInput" value="0" inputmode="decimal">
+                </div>
+            </div>
+
+            <div class="glass-box payment-box">
+                <label for="paymentChannel">Payment Channel</label>
+                <div class="flex-row">
+                    <div>
+                        <strong id="paymentTag">Bank transfer</strong>
+                        <div class="info-tag" id="paymentFeeInfo">No processing fee</div>
+                    </div>
+                    <div class="select-custom">
+                        <select id="paymentChannel">
+                            <option value="0" data-tag="Bank transfer">Bank</option>
+                            <option value="0.015" data-tag="Fintech wallet">Fintech</option>
+                            <option value="0.02" data-tag="Cash handling">Cash</option>
+                            <option value="0.01" data-tag="Payment gateway">Gateway</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-box highlight" id="rateCard">
+                <label id="rateTypeLabel">P2P Rate (Editable)</label>
+                <input type="number" id="manualRate" value="1600" inputmode="decimal">
+                <div class="info-tag" id="officialRateInfo">Official: Loading...</div>
+            </div>
+
+            <div class="breakdown-card">
+                <div class="b-row">
+                    <span class="b-label">Market Value</span>
+                    <span id="marketValDisplay" class="b-value">N0.00</span>
+                </div>
+                <div class="b-row profit-line">
+                    <span class="b-label">Your Commission</span>
+                    <span id="profitValDisplay" class="b-value">+N0.00</span>
+                </div>
+                <div class="b-row fee-line">
+                    <span class="b-label">Channel Fee</span>
+                    <span id="feeValDisplay" class="b-value">-N0.00</span>
+                </div>
+                
+                <div class="final-quote-box">
+                    <div class="q-header">FINAL QUOTE</div>
+                    <div class="q-main">
+                        <span class="q-symbol">N</span>
+                        <span id="nairaFinal">0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-btn" id="copyBtn" type="button">Copy & Save Trade</button>
+            <button class="receipt-btn" id="receiptBtn" type="button">Download Branded Receipt</button>
+
+            <div class="history-section">
+                <div class="history-header">
+                    <span>RECENT TRADES</span>
+                    <button id="clearHistBtn" class="clear-btn" type="button">Clear All</button>
+                </div>
+                <div id="historyList"></div>
+            </div>
+
+            <section class="analytics-card" aria-labelledby="analyticsTitle">
+                <div class="analytics-heading">
+                    <div>
+                        <span class="eyebrow">PERFORMANCE</span>
+                        <h2 id="analyticsTitle">Trade pulse</h2>
+                    </div>
+                    <span class="analytics-period">RECENT 5</span>
+                </div>
+                <div class="metric-grid">
+                    <div><span>Volume</span><strong id="volumeMetric">N0.00</strong></div>
+                    <div><span>Commission</span><strong id="commissionMetric">N0.00</strong></div>
+                    <div><span>Avg. margin</span><strong id="marginMetric">N0.00</strong></div>
+                </div>
+                <canvas id="analyticsChart" width="820" height="220" aria-label="Recent trade volume chart"></canvas>
+            </section>
+
+            <section class="alert-card" aria-labelledby="alertTitle">
+                <div class="analytics-heading">
+                    <div>
+                        <span class="eyebrow">SMART ALERT</span>
+                        <h2 id="alertTitle">Rate watch</h2>
+                    </div>
+                    <span id="alertStatus" class="alert-status">INACTIVE</span>
+                </div>
+                <div class="alert-controls">
+                    <select id="alertDirection" aria-label="Alert direction">
+                        <option value="above">Rises above</option>
+                        <option value="below">Falls below</option>
+                    </select>
+                    <div class="alert-input"><span>N</span><input id="alertThreshold" type="number" min="0" placeholder="Rate" inputmode="decimal"></div>
+                    <button id="saveAlertBtn" type="button">Set Alert</button>
+                </div>
+                <p id="alertMessage" class="info-tag">Set a threshold to watch the current P2P rate.</p>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(() => console.log("BlacRate: Offline Mode Active"));
+            });
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
+```[cite: 1]
