@@ -30,9 +30,10 @@
                     <input type="number" id="coinQty" placeholder="0.00" inputmode="decimal">
                     <div class="select-custom">
                         <select id="coinType">
-                            <option value="1">USDT</option>
-                            <option value="65000">BTC</option> <option value="3500">ETH</option>
-                            <option value="150">SOL</option>
+                            <option value="1" data-coin="tether">USDT</option>
+                            <option value="65000" data-coin="bitcoin">BTC</option>
+                            <option value="3500" data-coin="ethereum">ETH</option>
+                            <option value="150" data-coin="solana">SOL</option>
                         </select>
                     </div>
                 </div>
@@ -76,7 +77,7 @@
             <div class="history-section">
                 <div class="history-header">
                     <span>RECENT TRADES</span>
-                    <button id="clearHistBtn" class="clear-btn">Clear</button>
+                    <button id="clearHistBtn" class="clear-btn">Clear All</button>
                 </div>
                 <div id="historyList"></div>
             </div>
@@ -94,3 +95,240 @@
     <script src="script.js"></script>
 </body>
 </html>
+```[cite: 1]
+
+---
+
+#### `script.js`
+```javascript
+// --- CONFIG & STATE ---
+let officialRate = 1600; 
+let isOfficialMode = false;
+
+const elements = {
+    qty: document.getElementById('coinQty'),
+    rate: document.getElementById('manualRate'),
+    margin: document.getElementById('marginInput'),
+    coin: document.getElementById('coinType'),
+    marketShow: document.getElementById('marketValDisplay'),
+    profitShow: document.getElementById('profitValDisplay'),
+    finalShow: document.getElementById('nairaFinal'),
+    offInfo: document.getElementById('officialRateInfo'),
+    history: document.getElementById('historyList')
+};
+
+// --- API FETCHING ---
+async function updateRates() {
+    try {
+        // Fetch Crypto prices
+        const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,solana&vs_currencies=usd');
+        const cryptoData = await cryptoRes.json();
+        
+        // Dynamically update option values based on data-coin attributes
+        Array.from(elements.coin.options).forEach(option => {
+            const coinId = option.getAttribute('data-coin');
+            if (coinId && cryptoData[coinId]) {
+                option.value = cryptoData[coinId].usd;
+            }
+        });
+
+        // Fetch Naira Official Rate
+        const nairaRes = await fetch('https://open.er-api.com/v6/latest/USD');
+        const nairaData = await nairaRes.json();
+        officialRate = nairaData.rates.NGN;
+        
+        elements.offInfo.innerText = `Official: ₦${officialRate.toLocaleString()}`;
+        if(!isOfficialMode) elements.rate.value = Math.round(officialRate * 1.05);
+        
+        runCalc();
+    } catch (err) {
+        console.log("Offline or API Error - Using stored rates");
+        elements.offInfo.innerText = `Official: ₦${officialRate.toLocaleString()} (Cached)`;
+    }
+}
+
+// --- CALCULATOR LOGIC ---
+function runCalc() {
+    const qty = parseFloat(elements.qty.value) || 0;
+    const coinUsd = parseFloat(elements.coin.value) || 1;
+    const rate = parseFloat(elements.rate.value) || 0;
+    const margin = parseFloat(elements.margin.value) || 0;
+
+    const marketValue = qty * coinUsd * rate;
+    const commission = qty * coinUsd * margin;
+    const total = marketValue + commission;
+
+    elements.marketShow.innerText = "₦" + marketValue.toLocaleString('en-NG', {minimumFractionDigits: 2});
+    elements.profitShow.innerText = "+₦" + commission.toLocaleString('en-NG', {minimumFractionDigits: 2});
+    elements.finalShow.innerText = total.toLocaleString('en-NG', {minimumFractionDigits: 2});
+}
+
+// --- ENGINE TOGGLE ---
+function setMode(mode) {
+    isOfficialMode = (mode === 'official');
+    elements.rate.value = isOfficialMode ? officialRate : Math.round(officialRate * 1.05);
+    elements.rate.disabled = isOfficialMode;
+    
+    document.getElementById('p2pTab').classList.toggle('active', !isOfficialMode);
+    document.getElementById('offTab').classList.toggle('active', isOfficialMode);
+    document.getElementById('rateTypeLabel').innerText = isOfficialMode ? "Official Rate (Locked)" : "P2P Rate (Editable)";
+    
+    runCalc();
+}
+
+// --- EVENT LISTENERS ---
+document.getElementById('p2pTab').onclick = () => setMode('p2p');
+document.getElementById('offTab').onclick = () => setMode('official');
+document.getElementById('refreshBtn').onclick = () => updateRates();
+document.getElementById('clearHistBtn').onclick = () => { localStorage.removeItem('br_h'); renderHistory(); };
+
+[elements.qty, elements.rate, elements.margin, elements.coin].forEach(el => {
+    el.addEventListener('input', runCalc);
+    el.addEventListener('change', runCalc);
+});
+
+// --- COPY & HISTORY ---
+document.getElementById('copyBtn').onclick = function() {
+    const selectedOption = elements.coin.options[elements.coin.selectedIndex];
+    const text = `💸 *BlacRate Quote*\n\nSelling: ${elements.qty.value || 0} ${selectedOption.text}\nTotal: ₦${elements.finalShow.innerText}\n\n_Generated via BlacRate Pro_`;
+    navigator.clipboard.writeText(text);
+    
+    let h = JSON.parse(localStorage.getItem('br_h')) || [];
+    h.unshift({ 
+        id: Date.now(),
+        d: `${elements.qty.value || 0} ${selectedOption.text}`, 
+        a: elements.finalShow.innerText, 
+        t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) 
+    });
+    localStorage.setItem('br_h', JSON.stringify(h.slice(0, 5)));
+    
+    this.innerText = "COPIED! ✅";
+    setTimeout(() => this.innerText = "Copy & Save Trade", 2000);
+    renderHistory();
+};
+
+function deleteHistoryItem(id) {
+    let h = JSON.parse(localStorage.getItem('br_h')) || [];
+    h = h.filter(item => item.id !== id);
+    localStorage.setItem('br_h', JSON.stringify(h));
+    renderHistory();
+}
+
+window.deleteHistoryItem = deleteHistoryItem;
+
+function renderHistory() {
+    let h = JSON.parse(localStorage.getItem('br_h')) || [];
+    elements.history.innerHTML = h.map(i => `
+        <div class="h-item">
+            <span>${i.d} <small style="opacity:0.3">${i.t}</small></span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color:var(--accent); font-weight:bold;">₦${i.a}</span>
+                <button onclick="deleteHistoryItem(${i.id})" class="del-item-btn" title="Delete">×</button>
+            </div>
+        </div>`).join('');
+}
+
+// Initialize
+updateRates();
+renderHistory();
+```[cite: 5]
+
+---
+
+#### `style.css`
+```css
+:root { --bg: #050505; --accent: #bc6ff1; --glass: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --green: #00ff88; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; outline: none; }
+
+body { background: var(--bg); color: white; display: flex; justify-content: center; min-height: 100vh; overflow-y: auto; padding-bottom: 40px; }
+.app-wrap { width: 100%; max-width: 410px; padding: 20px; }
+
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.logo { font-weight: 900; font-size: 1.4rem; letter-spacing: -1px; }
+.logo span { color: var(--accent); }
+.live-pill { font-size: 0.6rem; color: var(--green); border: 1px solid var(--green); padding: 4px 10px; border-radius: 50px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+.live-pill:active { opacity: 0.7; }
+
+.engine-toggle { display: grid; grid-template-columns: 1fr 1fr; background: var(--glass); border-radius: 14px; padding: 4px; margin-bottom: 15px; border: 1px solid var(--border); }
+.t-btn { background: transparent; border: none; color: white; padding: 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 800; cursor: pointer; transition: 0.2s; }
+.t-btn.active { background: var(--accent); color: black; }
+
+.glass-box { background: var(--glass); border: 1px solid var(--border); padding: 15px; border-radius: 18px; margin-bottom: 10px; }
+.highlight { border-color: var(--accent); background: rgba(188, 111, 241, 0.05); }
+.margin-box { border-left: 3px solid var(--green); }
+
+label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.4; display: block; margin-bottom: 6px; letter-spacing: 1px; }
+.flex-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+input { background: transparent; border: none; color: white; font-size: 1.6rem; font-weight: 700; width: 100%; }
+input:disabled { opacity: 0.3; }
+
+/* Dark Styled Dropdown */
+.select-custom { background: #151515; border: 1px solid var(--border); border-radius: 10px; padding: 4px 8px; }
+select { background: transparent; color: var(--accent); border: none; font-weight: 900; font-size: 0.9rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
+
+/* Breakdown Styling */
+.breakdown-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 22px; padding: 20px; margin: 20px 0; }
+.b-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.b-label { font-size: 0.7rem; opacity: 0.5; text-transform: uppercase; }
+.b-value { font-weight: 600; font-size: 0.85rem; }
+.profit-line { color: var(--green); }
+
+.final-quote-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+.q-header { font-size: 0.6rem; letter-spacing: 2px; opacity: 0.4; margin-bottom: 4px; }
+.q-main { color: var(--accent); font-weight: 900; font-size: 2.2rem; letter-spacing: -1px; display: flex; align-items: baseline; }
+.q-symbol { font-size: 1.2rem; margin-right: 4px; }
+
+.cta-btn { width: 100%; background: var(--accent); color: black; border: none; padding: 20px; border-radius: 18px; font-weight: 900; font-size: 1rem; cursor: pointer; margin-bottom: 30px; transition: opacity 0.2s; }
+.cta-btn:active { opacity: 0.85; }
+
+/* History */
+.history-section { margin-top: 10px; }
+.history-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.65rem; letter-spacing: 1px; opacity: 0.5; margin-bottom: 8px; text-transform: uppercase; }
+.h-item { background: var(--glass); padding: 12px; border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+.clear-btn { background: transparent; border: none; color: #ff4444; font-size: 0.6rem; cursor: pointer; font-weight: bold; }
+.del-item-btn { background: transparent; border: none; color: #ff4444; font-size: 1rem; cursor: pointer; opacity: 0.7; padding: 0 4px; font-weight: bold; }
+.del-item-btn:hover { opacity: 1; }
+```[cite: 6]
+
+---
+
+#### `sw.js`
+```javascript
+const CACHE_NAME = 'blacrate-v2';
+const ASSETS = [
+    'index.html',
+    'style.css',
+    'script.js',
+    'manifest.json',
+    'https://cdn-icons-png.flaticon.com/512/10307/10307842.png'
+];
+
+// Install: Save files to cache
+self.addEventListener('install', (e) => {
+    e.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(ASSETS);
+        })
+    );
+});
+
+// Activate: Clean up old caches
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then((keys) => {
+            return Promise.all(
+                keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+            );
+        })
+    );
+});
+
+// Fetch: Serve from cache if offline
+self.addEventListener('fetch', (e) => {
+    e.respondWith(
+        caches.match(e.request).then((response) => {
+            return response || fetch(e.request);
+        })
+    );
+});
+```[cite: 7]
