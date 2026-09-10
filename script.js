@@ -7,13 +7,27 @@ const elements = {
     rate: document.getElementById('manualRate'),
     margin: document.getElementById('marginInput'),
     coin: document.getElementById('coinType'),
+    payment: document.getElementById('paymentChannel'),
+    paymentTag: document.getElementById('paymentTag'),
+    paymentFeeInfo: document.getElementById('paymentFeeInfo'),
     marketShow: document.getElementById('marketValDisplay'),
     profitShow: document.getElementById('profitValDisplay'),
+    feeShow: document.getElementById('feeValDisplay'),
     finalShow: document.getElementById('nairaFinal'),
     offInfo: document.getElementById('officialRateInfo'),
     history: document.getElementById('historyList'),
     refresh: document.getElementById('refreshBtn'),
-    copy: document.getElementById('copyBtn')
+    copy: document.getElementById('copyBtn'),
+    receipt: document.getElementById('receiptBtn'),
+    volumeMetric: document.getElementById('volumeMetric'),
+    commissionMetric: document.getElementById('commissionMetric'),
+    marginMetric: document.getElementById('marginMetric'),
+    chart: document.getElementById('analyticsChart'),
+    alertThreshold: document.getElementById('alertThreshold'),
+    alertDirection: document.getElementById('alertDirection'),
+    saveAlert: document.getElementById('saveAlertBtn'),
+    alertStatus: document.getElementById('alertStatus'),
+    alertMessage: document.getElementById('alertMessage')
 };
 
 const formatNaira = value => value.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -32,7 +46,7 @@ async function updateRates() {
     elements.refresh.innerHTML = '<span>UPDATING...</span>';
 
     try {
-        const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,solana&vs_currencies=usd');
+        const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,solana,usd-coin,binancecoin,the-open-network&vs_currencies=usd');
         if (!cryptoRes.ok) throw new Error('Crypto rate request failed');
         const cryptoData = await cryptoRes.json();
 
@@ -50,6 +64,7 @@ async function updateRates() {
         elements.offInfo.textContent = `Official: N${formatNaira(officialRate)}`;
         if (!isOfficialMode) elements.rate.value = Math.round(officialRate * 1.05);
         runCalc();
+        checkAlert();
     } catch (error) {
         elements.offInfo.textContent = `Official: N${formatNaira(officialRate)} (Cached)`;
     } finally {
@@ -63,12 +78,15 @@ function runCalc() {
     const coinUsd = parseFloat(elements.coin.value) || 1;
     const rate = parseFloat(elements.rate.value) || 0;
     const margin = parseFloat(elements.margin.value) || 0;
+    const channelFeeRate = parseFloat(elements.payment.value) || 0;
     const marketValue = qty * coinUsd * rate;
     const commission = qty * coinUsd * margin;
-    const total = marketValue + commission;
+    const channelFee = marketValue * channelFeeRate;
+    const total = marketValue + commission + channelFee;
 
     elements.marketShow.textContent = `N${formatNaira(marketValue)}`;
     elements.profitShow.textContent = `+N${formatNaira(commission)}`;
+    elements.feeShow.textContent = `-N${formatNaira(channelFee)}`;
     elements.finalShow.textContent = formatNaira(total);
 
     if (total !== lastTotal) {
@@ -77,6 +95,7 @@ function runCalc() {
         elements.finalShow.parentElement.classList.add('value-pulse');
         lastTotal = total;
     }
+    checkAlert();
 }
 
 function setMode(mode) {
@@ -115,6 +134,46 @@ document.getElementById('clearHistBtn').onclick = () => {
     element.addEventListener('change', runCalc);
 });
 
+elements.payment.addEventListener('change', () => {
+    const selectedPayment = elements.payment.options[elements.payment.selectedIndex];
+    const feeRate = parseFloat(selectedPayment.value) || 0;
+    elements.paymentTag.textContent = selectedPayment.dataset.tag;
+    elements.paymentFeeInfo.textContent = feeRate ? `${feeRate * 100}% processing impact` : 'No processing fee';
+    runCalc();
+});
+
+function readAlert() {
+    try { return JSON.parse(localStorage.getItem('br_alert')) || null; } catch (error) { return null; }
+}
+
+function checkAlert() {
+    const alert = readAlert();
+    if (!alert) return;
+    const currentRate = parseFloat(elements.rate.value) || 0;
+    const triggered = alert.direction === 'above' ? currentRate >= alert.threshold : currentRate <= alert.threshold;
+    elements.alertStatus.textContent = triggered ? 'TRIGGERED' : 'ACTIVE';
+    elements.alertStatus.className = `alert-status ${triggered ? 'triggered' : 'active'}`;
+    elements.alertMessage.textContent = triggered
+        ? `Rate watch hit at N${formatNaira(currentRate)}.`
+        : `Watching for ${alert.direction === 'above' ? 'N' + formatNaira(alert.threshold) + ' or higher' : 'N' + formatNaira(alert.threshold) + ' or lower'}.`;
+    if (triggered && 'Notification' in window && Notification.permission === 'granted' && alert.lastNotified !== alert.threshold) {
+        new Notification('BlacRate rate alert', { body: `Current P2P rate is N${formatNaira(currentRate)}.` });
+        alert.lastNotified = alert.threshold;
+        localStorage.setItem('br_alert', JSON.stringify(alert));
+    }
+}
+
+elements.saveAlert.onclick = async () => {
+    const threshold = parseFloat(elements.alertThreshold.value);
+    if (!threshold || threshold < 0) {
+        elements.alertMessage.textContent = 'Enter a valid Naira threshold first.';
+        return;
+    }
+    if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+    localStorage.setItem('br_alert', JSON.stringify({ threshold, direction: elements.alertDirection.value, lastNotified: null }));
+    checkAlert();
+};
+
 elements.copy.onclick = async function () {
     const selectedOption = elements.coin.options[elements.coin.selectedIndex];
     const text = `BLACRATE QUOTE\n\nSelling: ${elements.qty.value || 0} ${selectedOption.text}\nTotal: N${elements.finalShow.textContent}\n\nGenerated via BlacRate Pro`;
@@ -126,6 +185,9 @@ elements.copy.onclick = async function () {
             id: Date.now(),
             d: `${elements.qty.value || 0} ${selectedOption.text}`,
             a: elements.finalShow.textContent,
+            total: marketValueForHistory(),
+            commission: parseFloat(elements.profitShow.textContent.replace(/[^0-9.-]/g, '')) || 0,
+            fee: parseFloat(elements.feeShow.textContent.replace(/[^0-9.-]/g, '')) || 0,
             t: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
         localStorage.setItem('br_h', JSON.stringify(history.slice(0, 5)));
@@ -142,6 +204,69 @@ elements.copy.onclick = async function () {
         this.style.background = '';
         this.style.color = '';
     }, 2200);
+};
+
+elements.receipt.onclick = () => {
+    const selectedOption = elements.coin.options[elements.coin.selectedIndex];
+    const selectedPayment = elements.payment.options[elements.payment.selectedIndex];
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 900;
+    canvas.height = 1120;
+
+    const gradient = context.createLinearGradient(0, 0, 900, 1120);
+    gradient.addColorStop(0, '#111b26');
+    gradient.addColorStop(1, '#060a10');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#8d7aff';
+    context.fillRect(0, 0, canvas.width, 18);
+    context.fillStyle = '#f5f7fb';
+    context.font = '900 52px Arial';
+    context.fillText('Blac', 70, 115);
+    context.fillStyle = '#b5a8ff';
+    context.fillText('Rate', 195, 115);
+    context.fillStyle = '#9daab5';
+    context.font = '600 22px Arial';
+    context.fillText('PROFESSIONAL TRADE QUOTE', 72, 158);
+
+    const rows = [
+        ['Asset', `${elements.qty.value || 0} ${selectedOption.text}`],
+        ['Rate', `N${formatNaira(parseFloat(elements.rate.value) || 0)}`],
+        ['Payment', selectedPayment.dataset.tag],
+        ['Market value', elements.marketShow.textContent],
+        ['Commission', elements.profitShow.textContent],
+        ['Channel fee', elements.feeShow.textContent]
+    ];
+    context.fillStyle = 'rgba(255,255,255,0.07)';
+    context.roundRect(55, 220, 790, 450, 24);
+    context.fill();
+    rows.forEach((row, index) => {
+        const y = 285 + index * 60;
+        context.fillStyle = '#9daab5';
+        context.font = '600 22px Arial';
+        context.fillText(row[0].toUpperCase(), 90, y);
+        context.fillStyle = '#f5f7fb';
+        context.font = '700 25px Arial';
+        context.fillText(row[1], 490, y);
+    });
+    context.fillStyle = '#9daab5';
+    context.font = '700 21px Arial';
+    context.fillText('FINAL QUOTE', 75, 780);
+    context.fillStyle = '#b5a8ff';
+    context.font = '900 64px Arial';
+    context.fillText(`N${elements.finalShow.textContent}`, 70, 860);
+    context.fillStyle = '#9daab5';
+    context.font = '500 20px Arial';
+    context.fillText(`Generated ${new Date().toLocaleString()}`, 70, 980);
+    context.fillText('BlacRate Pro | Trade with clarity', 70, 1020);
+
+    const link = document.createElement('a');
+    link.download = `blacrate-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    elements.receipt.textContent = 'RECEIPT DOWNLOADED';
+    setTimeout(() => { elements.receipt.textContent = 'Download Branded Receipt'; }, 2200);
 };
 
 function deleteHistoryItem(id) {
@@ -162,8 +287,61 @@ function renderHistory() {
                 <button onclick="deleteHistoryItem(${item.id})" class="del-item-btn" title="Delete trade" type="button">×</button>
             </div>
         </div>`).join('');
+    renderAnalytics(history);
+}
+
+function marketValueForHistory() {
+    return parseFloat(elements.marketShow.textContent.replace(/[^0-9.-]/g, '')) || 0;
+}
+
+function renderAnalytics(history) {
+    const volume = history.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+    const commission = history.reduce((sum, item) => sum + (Number(item.commission) || 0), 0);
+    const averageMargin = history.length ? commission / history.length : 0;
+    elements.volumeMetric.textContent = `N${formatNaira(volume)}`;
+    elements.commissionMetric.textContent = `N${formatNaira(commission)}`;
+    elements.marginMetric.textContent = `N${formatNaira(averageMargin)}`;
+
+    const context = elements.chart.getContext('2d');
+    const width = elements.chart.width;
+    const height = elements.chart.height;
+    context.clearRect(0, 0, width, height);
+    context.strokeStyle = 'rgba(255,255,255,0.1)';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(0, height - 24);
+    context.lineTo(width, height - 24);
+    context.stroke();
+    const points = history.slice().reverse().map(item => Number(item.total) || 0);
+    if (!points.length) return;
+    const max = Math.max(...points, 1);
+    const step = points.length === 1 ? width / 2 : width / (points.length - 1);
+    context.beginPath();
+    points.forEach((point, index) => {
+        const x = points.length === 1 ? width / 2 : index * step;
+        const y = height - 28 - (point / max) * (height - 54);
+        index ? context.lineTo(x, y) : context.moveTo(x, y);
+    });
+    context.strokeStyle = '#8d7aff';
+    context.lineWidth = 5;
+    context.lineJoin = 'round';
+    context.stroke();
+    points.forEach((point, index) => {
+        const x = points.length === 1 ? width / 2 : index * step;
+        const y = height - 28 - (point / max) * (height - 54);
+        context.fillStyle = '#b5a8ff';
+        context.beginPath();
+        context.arc(x, y, 6, 0, Math.PI * 2);
+        context.fill();
+    });
 }
 
 runCalc();
 updateRates();
 renderHistory();
+const savedAlert = readAlert();
+if (savedAlert) {
+    elements.alertThreshold.value = savedAlert.threshold;
+    elements.alertDirection.value = savedAlert.direction;
+    checkAlert();
+}
